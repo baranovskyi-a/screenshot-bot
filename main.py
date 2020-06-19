@@ -5,22 +5,29 @@ from PIL import Image
 from io import BytesIO
 import base64
 from time import sleep
-
+from selenium.common.exceptions import NoSuchElementException
 
 bot = Bot(config.TOKEN)
 dp = Dispatcher(bot)
 
 
 def remove_fixed_elements(driver, parent_node):
-    if parent_node.value_of_css_property('position') == 'fixed':
-        driver.execute_script("""
-            var element = arguments[0];
-            element.parentNode.removeChild(element);
-            """, parent_node)
-    else:
-        child_elements = parent_node.find_elements_by_xpath('./*')
-        for element in child_elements:
-            remove_fixed_elements(driver, element)
+    elements = [parent_node]
+    while len(elements) > 0:
+        current_element = elements.pop()
+        try:
+            position = current_element.value_of_css_property('position')
+        except NoSuchElementException:
+            return False
+        if position == 'fixed':
+            driver.execute_script("""
+                var element = arguments[0];
+                element.parentNode.removeChild(element);
+                """, current_element)
+        else:
+            child_elements = current_element.find_elements_by_xpath('./*')
+            for c_el in child_elements:
+                elements.append(c_el)
 
 
 def get_b64_screen_from_url(url, remove_fixed=False):
